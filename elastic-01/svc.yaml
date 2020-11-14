@@ -1,19 +1,30 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: ss-6-internal
-  namespace: project-2
+  name: headless
+  namespace: default
   labels:
-    app: es-6
+    app: es-1
 spec:
   clusterIP: None
-  ports:
-  - port: 9200
-    targetPort: 9200
-    protocol: TCP
-    name: http-elastic-client
   selector:
-    app: es-6
+    app: es-1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: es-1-internalclusterip
+  namespace: default
+  labels:
+    app: es-1
+spec:
+  selector:
+    app: es-1
+  ports:
+  - protocol: TCP
+    port: 9200
+    targetPort: 9200
+    name: http-elastic-client
 
 
 

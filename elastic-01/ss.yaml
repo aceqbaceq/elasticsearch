@@ -1,28 +1,29 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: es6-cluster
+  name: es-master
   namespace: default
 spec:
+  serviceName: headless
   replicas: 3
   selector:
     matchLabels:
-      app: es-6
+      app: es-1
   template:
     metadata:
       labels:
-        app: es-6
+        app: es-1
     spec:
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.7.1
         resources:
             limits:
-              cpu: 1500m
-              memory: 1.7G
+              cpu: 2000m
+              memory: 360Mi
             requests:
               cpu: 300m
-              memory: 1.4G
+              memory: 332Mi
         ports:
         - containerPort: 9200
           name: rest
@@ -35,23 +36,15 @@ spec:
           mountPath: /usr/share/elasticsearch/data
         env:
           - name: cluster.name
-            value: escluster-project-2
+            value: es-cl-01
           - name: node.name
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
-          - name: "transport.bind_host"
-            value: "0.0.0.0"
-#          - name: "transport.port"
-#            value: "9300"
-#          - name: "transport.publish_host"
-#            value: "test-kub-02.mk.local"
-#          - name: "transport.publish_port"
-#            value: "30896"
           - name: "cluster.initial_master_nodes"
-            value: "es6-cluster-0, es6-cluster-1"
+            value: "es-master-0, es-master-1, es-master-2"
           - name: "discovery.seed_hosts"
-            value: "ss-6-internal.project-2.svc.cluster.local"
+            value: "headless.default.svc.cluster.local"
           - name: "node.master"
             value: "true"
           - name: "node.voting_only"
@@ -63,7 +56,7 @@ spec:
           - name: "node.ml"
             value: "false"
           - name: ES_JAVA_OPTS
-            value: "-Xms1024m -Xmx1024m"
+            value: "-Xms100m -Xmx100m"
       initContainers:
       - name: fix-permissions
         image: busybox
@@ -96,11 +89,11 @@ spec:
   - metadata:
       name: data
       labels:
-        app: es-6
+        app: es-1
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: openebs-hostpath
+      storageClassName: pv-localdisks
       resources:
         requests:
-          storage: 1Gi
+          storage: 800M
 
