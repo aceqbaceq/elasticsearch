@@ -147,7 +147,7 @@ spec:
         app.pods-role: masters
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: pv-localdisks
+      storageClassName: pv-localdisks-100m
       resources:
         requests:
           storage: 90Mi
@@ -176,7 +176,7 @@ metadata:
   namespace: es-cl-01
 spec:
   serviceName: data-headless
-  replicas: 6
+  replicas: 3
   selector:
     matchLabels:
       app.name: elastic
@@ -276,7 +276,7 @@ spec:
         app.pods-role: data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: pv-localdisks
+      storageClassName: pv-localdisks-1g
       resources:
         requests:
           storage: 970Mi
@@ -409,7 +409,7 @@ spec:
         app.pods-role: interface
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: pv-localdisks
+      storageClassName: pv-localdisks-100m
       resources:
         requests:
           storage: 90Mi
