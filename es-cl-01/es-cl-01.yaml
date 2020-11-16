@@ -8,6 +8,18 @@ metadata:
   name: es-cl-01
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: confmap
+  namespace: es-cl-01
+data:
+# elasticsearch cluster name variable
+  clustername: es-cl-01
+# elasticsearch initial masters node.name
+  cluster_initial_master_nodes: "es-master-0, es-master-1, es-master-2"
+
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: masters-cluster-ip
@@ -90,13 +102,19 @@ spec:
           mountPath: /usr/share/elasticsearch/data
         env:
           - name: cluster.name
-            value: es-cl-01
+            valueFrom:
+              configMapKeyRef:
+                name: confmap
+                key: clustername
           - name: node.name
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
           - name: "cluster.initial_master_nodes"
-            value: "es-master-0, es-master-1, es-master-2"
+            valueFrom:
+              configMapKeyRef:
+                name: confmap
+                key: cluster_initial_master_nodes
           - name: "discovery.seed_hosts"
             value: "masters-headless"
           - name: "node.master"
@@ -109,6 +127,8 @@ spec:
             value: "false"
           - name: "node.ml"
             value: "false"
+          - name: "cluster.routing.allocation.awareness.attributes"
+            value: "rack_id"
           - name: ES_JAVA_OPTS
             value: "-Xms100m -Xmx100m"
       initContainers:
@@ -176,7 +196,7 @@ metadata:
   namespace: es-cl-01
 spec:
   serviceName: data-headless
-  replicas: 3
+  replicas: 9
   selector:
     matchLabels:
       app.name: elastic
@@ -221,7 +241,10 @@ spec:
           mountPath: /usr/share/elasticsearch/data
         env:
           - name: cluster.name
-            value: es-cl-01
+            valueFrom:
+              configMapKeyRef:
+                name: confmap
+                key: clustername
           - name: node.name
             valueFrom:
               fieldRef:
@@ -238,6 +261,10 @@ spec:
             value: "true"
           - name: "node.ml"
             value: "false"
+          - name: node.attr.rack_id
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           - name: ES_JAVA_OPTS
             value: "-Xms100m -Xmx100m"
       initContainers:
@@ -354,7 +381,10 @@ spec:
           mountPath: /usr/share/elasticsearch/data
         env:
           - name: cluster.name
-            value: es-cl-01
+            valueFrom:
+              configMapKeyRef:
+                name: confmap
+                key: clustername
           - name: node.name
             valueFrom:
               fieldRef:
