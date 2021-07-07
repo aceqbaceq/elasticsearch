@@ -5,16 +5,16 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: es-cl-01
+  name: es-cl-04
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: confmap
-  namespace: es-cl-01
+  namespace: es-cl-04
 data:
 # elasticsearch cluster name variable
-  clustername: es-cl-01
+  clustername: es-cl-04
 # elasticsearch initial masters node.name
   cluster_initial_master_nodes: "es-master-0, es-master-1, es-master-2"
 
@@ -23,7 +23,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: masters-cluster-ip
-  namespace: es-cl-01
+  namespace: es-cl-04
   labels:
     app.name: elastic
 spec:
@@ -42,7 +42,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: masters-headless
-  namespace: es-cl-01
+  namespace: es-cl-04
   labels:
     app.name: elastic
     app.pods-role: masters
@@ -56,7 +56,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: es-master
-  namespace: es-cl-01
+  namespace: es-cl-04
 spec:
   serviceName: masters-headless
   replicas: 3
@@ -83,10 +83,11 @@ spec:
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.7.1
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 2000m
-              memory: 370Mi
+              memory: 3096Mi
             requests:
               cpu: 300m
               memory: 340Mi
@@ -130,10 +131,11 @@ spec:
           - name: "cluster.routing.allocation.awareness.attributes"
             value: "rack_id"
           - name: ES_JAVA_OPTS
-            value: "-Xms100m -Xmx100m"
+            value: "-Xms2000m -Xmx2000m"
       initContainers:
       - name: fix-permissions
         image: busybox
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 200m
@@ -149,6 +151,7 @@ spec:
           mountPath: /usr/share/elasticsearch/data
       - name: increase-vm-max-map
         image: busybox
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 200m
@@ -171,15 +174,20 @@ spec:
       resources:
         requests:
           storage: 90Mi
+
+
+
 #
 # data nodes
+# 
+# 1-st SS
 #
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: data-headless
-  namespace: es-cl-01
+  namespace: es-cl-04
   labels:
     app.name: elastic
     app.pods-role: data
@@ -193,10 +201,10 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: es-data
-  namespace: es-cl-01
+  namespace: es-cl-04
 spec:
   serviceName: data-headless
-  replicas: 9
+  replicas: 5
   selector:
     matchLabels:
       app.name: elastic
@@ -222,10 +230,11 @@ spec:
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.7.1
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 2000m
-              memory: 370Mi
+              memory: 3500Mi
             requests:
               cpu: 300m
               memory: 340Mi
@@ -239,6 +248,8 @@ spec:
         volumeMounts:
         - name: pvc
           mountPath: /usr/share/elasticsearch/data
+        - name: pvc2
+          mountPath: /usr/share/elasticsearch/data2
         env:
           - name: cluster.name
             valueFrom:
@@ -266,10 +277,15 @@ spec:
               fieldRef:
                 fieldPath: spec.nodeName
           - name: ES_JAVA_OPTS
-            value: "-Xms100m -Xmx100m"
+            value: "-Xms3000m -Xmx3000m"
+ 
+          - name: path.data 
+            value: "/usr/share/elasticsearch/data,/usr/share/elasticsearch/data2"
+ 
       initContainers:
       - name: fix-permissions
         image: busybox
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 200m
@@ -277,14 +293,19 @@ spec:
             requests:
               cpu: 100m
               memory: 50M
-        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data; mkdir -p /usr/share/elasticsearch/data2 && chown -R 1000:1000 /usr/share/elasticsearch/data2 "]
         securityContext:
           privileged: true
+
         volumeMounts:
         - name: pvc
           mountPath: /usr/share/elasticsearch/data
+        - name: pvc2
+          mountPath: /usr/share/elasticsearch/data2
+
       - name: increase-vm-max-map
         image: busybox
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 200m
@@ -307,6 +328,196 @@ spec:
       resources:
         requests:
           storage: 970Mi
+
+  - metadata:
+      name: pvc2
+      labels:
+        app.name: elastic
+        app.pods-role: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: pv-localdisks-2g
+      resources:
+        requests:
+          storage: 1940Mi
+
+
+
+
+#
+# data nodes
+#
+# 2-nd SS
+#
+#
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-headless
+  namespace: es-cl-04
+  labels:
+    app.name: elastic
+    app.pods-role: data2
+spec:
+  clusterIP: None
+  selector:
+    app.name: elastic
+    app.pods-role: data2
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: es-data2
+  namespace: es-cl-04
+spec:
+  serviceName: data2-headless
+  replicas: 4
+  selector:
+    matchLabels:
+      app.name: elastic
+      app.pods-role: data2
+  template:
+    metadata:
+      labels:
+        app.name: elastic
+        app.pods-role: data2
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.pods-role
+                  operator: In
+                  values:
+                  - data2
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.7.1
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+              cpu: 2000m
+              memory: 3500Mi
+            requests:
+              cpu: 300m
+              memory: 340Mi
+        ports:
+        - containerPort: 9200
+          name: rest
+          protocol: TCP
+        - containerPort: 9300
+          name: inter-node
+          protocol: TCP
+        volumeMounts:
+        - name: pvc
+          mountPath: /usr/share/elasticsearch/data
+        - name: pvc2
+          mountPath: /usr/share/elasticsearch/data2
+        env:
+          - name: cluster.name
+            valueFrom:
+              configMapKeyRef:
+                name: confmap
+                key: clustername
+          - name: node.name
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: "discovery.seed_hosts"
+            value: "masters-headless"
+          - name: "node.master"
+            value: "false"
+          - name: "node.voting_only"
+            value: "false"
+          - name: "node.data"
+            value: "true"
+          - name: "node.ingest"
+            value: "true"
+          - name: "node.ml"
+            value: "false"
+          - name: node.attr.rack_id
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: ES_JAVA_OPTS
+            value: "-Xms3000m -Xmx3000m"
+
+          - name: path.data
+            value: "/usr/share/elasticsearch/data,/usr/share/elasticsearch/data2"
+
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+              cpu: 200m
+              memory: 100M
+            requests:
+              cpu: 100m
+              memory: 50M
+        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data; mkdir -p /usr/share/elasticsearch/data2 && chown -R 1000:1000 /usr/share/elasticsearch/data2 "]
+        securityContext:
+          privileged: true
+
+        volumeMounts:
+        - name: pvc
+          mountPath: /usr/share/elasticsearch/data
+        - name: pvc2
+          mountPath: /usr/share/elasticsearch/data2
+
+      - name: increase-vm-max-map
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+              cpu: 200m
+              memory: 100M
+            requests:
+              cpu: 100m
+              memory: 50M
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+  volumeClaimTemplates:
+  - metadata:
+      name: pvc
+      labels:
+        app.name: elastic
+        app.pods-role: data2
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: pv-localdisks-1g
+      resources:
+        requests:
+          storage: 970Mi
+
+  - metadata:
+      name: pvc2
+      labels:
+        app.name: elastic
+        app.pods-role: data2
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: pv-localdisks-2g
+      resources:
+        requests:
+          storage: 1940Mi
+
+
+
+
+
+
+
+
+
+
 #
 # interface nodes
 #
@@ -315,7 +526,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: interface
-  namespace: es-cl-01
+  namespace: es-cl-04
   labels:
     app.name: elastic
     app.pods-role: interface
@@ -329,13 +540,13 @@ spec:
     targetPort: 9200
     protocol: TCP
     name: tcp-elastic-client
-    nodePort: 30000
+    nodePort: 31000
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: es-interface
-  namespace: es-cl-01
+  namespace: es-cl-04
 spec:
   serviceName: interface
   replicas: 3
@@ -362,10 +573,11 @@ spec:
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:7.7.1
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 2000m
-              memory: 370Mi
+              memory: 3000Mi
             requests:
               cpu: 300m
               memory: 340Mi
@@ -402,10 +614,11 @@ spec:
           - name: "node.ml"
             value: "false"
           - name: ES_JAVA_OPTS
-            value: "-Xms100m -Xmx100m"
+            value: "-Xms2000m -Xmx2000m"
       initContainers:
       - name: fix-permissions
         image: busybox
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 200m
@@ -421,6 +634,7 @@ spec:
           mountPath: /usr/share/elasticsearch/data
       - name: increase-vm-max-map
         image: busybox
+        imagePullPolicy: IfNotPresent
         resources:
             limits:
               cpu: 200m
@@ -439,7 +653,7 @@ spec:
         app.pods-role: interface
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: pv-localdisks-100m
+      storageClassName: pv-localdisks-1g
       resources:
         requests:
-          storage: 90Mi
+          storage: 900Mi

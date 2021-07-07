@@ -34,10 +34,12 @@ data:
       volumeMode: Filesystem
       fsType: ext4
       namePattern: "*"
-    pv-localdisks-100m:
+
+
+    pv-localdisks-2g:
       minResyncPeriod: "5m0s"
-      hostDir: /var/lib/kubernetes-PV-folder/100M/
-      mountDir: /var/lib/kubernetes-PV-folder/100M/
+      hostDir: /var/lib/kubernetes-PV-folder/2G/
+      mountDir: /var/lib/kubernetes-PV-folder/2G/
       blockCleanerCommand:
         - "/scripts/shred.sh"
         - "2"
@@ -45,6 +47,29 @@ data:
       fsType: ext4
       namePattern: "*"
 
+
+
+
+    pv-localdisks-5g:
+      minResyncPeriod: "5m0s"
+      hostDir: /var/lib/kubernetes-PV-folder/5G/
+      mountDir: /var/lib/kubernetes-PV-folder/5G/
+      blockCleanerCommand:
+        - "/scripts/shred.sh"
+        - "2"
+      volumeMode: Filesystem
+      fsType: ext4
+      namePattern: "*"
+    pv-localdisks-100m:
+      minResyncPeriod: "5m0s"
+      hostDir: /var/lib/kubernetes-PV-folder/100m/
+      mountDir: /var/lib/kubernetes-PV-folder/100m/
+      blockCleanerCommand:
+        - "/scripts/shred.sh"
+        - "2"
+      volumeMode: Filesystem
+      fsType: ext4
+      namePattern: "*"
 ---
 # Source: provisioner/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -149,11 +174,23 @@ spec:
               readOnly: true
             - name: provisioner-dev
               mountPath: /dev
+
             - name: pv-localdisks-1g
               mountPath: /var/lib/kubernetes-PV-folder/1G
               mountPropagation: HostToContainer
+
+
+            - name: pv-localdisks-2g
+              mountPath: /var/lib/kubernetes-PV-folder/2G
+              mountPropagation: HostToContainer
+
+
+
+            - name: pv-localdisks-5g
+              mountPath: /var/lib/kubernetes-PV-folder/5G
+              mountPropagation: HostToContainer
             - name: pv-localdisks-100m
-              mountPath: /var/lib/kubernetes-PV-folder/100M
+              mountPath: /var/lib/kubernetes-PV-folder/100m
               mountPropagation: HostToContainer
       volumes:
         - name: provisioner-config
@@ -162,11 +199,23 @@ spec:
         - name: provisioner-dev
           hostPath:
             path: /dev
+
         - name: pv-localdisks-1g
           hostPath:
             path: /var/lib/kubernetes-PV-folder/1G
+
+
+        - name: pv-localdisks-2g
+          hostPath:
+            path: /var/lib/kubernetes-PV-folder/2G
+
+
+
+        - name: pv-localdisks-5g
+          hostPath:
+            path: /var/lib/kubernetes-PV-folder/5G
         - name: pv-localdisks-100m
           hostPath:
-            path: /var/lib/kubernetes-PV-folder/100M
+            path: /var/lib/kubernetes-PV-folder/100m
 
 
